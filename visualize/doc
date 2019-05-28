@@ -1,0 +1,7 @@
+use mountain car env
+originally, the reward is not reaching the flag -1, reach the flag end.
+
+modified reward: approximately will give reward = height achieved in the state
+
+plot value function: somehow slow OTZ, discounted reward average in 10 trials
+which reward to use?
