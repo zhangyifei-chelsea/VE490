@@ -29,24 +29,32 @@ class Net(nn.Module):
         self.fc1.weight.data.normal_(0, 0.1)   # initialization
         self.fc2 = nn.Linear(20, 20)
         self.fc2.weight.data.normal_(0, 0.1)  # initialization
+        self.fc3 = nn.Linear(20, 20)
+        self.fc3.weight.data.normal_(0, 0.1)  # initialization
         self.out = nn.Linear(20, 2)
         self.out.weight.data.normal_(0, 0.1)   # initialization
 
     def forward(self, x):
         # mountainCar #
-        # x = self.fc1(x)
-        # x = F.relu(x)
-        # actions_value = self.out(x)
-        # return actions_value
-
-
-        # cartpole #
         x = self.fc1(x)
         x = F.relu(x)
+        # residue = x
         x = self.fc2(x)
+        x = F.relu(x)
+        x = self.fc3(x)
+        # x += residue
         x = F.relu(x)
         actions_value = self.out(x)
         return actions_value
+
+
+        # cartpole #
+        # x = self.fc1(x)
+        # x = F.relu(x)
+        # x = self.fc2(x)
+        # x = F.relu(x)
+        # actions_value = self.out(x)
+        # return actions_value
 
 
 def get_weights(net):
@@ -110,7 +118,7 @@ def plot_2D_contour(x, y, value, model_name):
     print('------------------------------------------------------------------')
     fig = plt.figure()
 
-    level=np.arange(5,300,30)   # can modify here
+    level=np.arange(0,500,50)   # can modify here
     CS = plt.contour(x, y, value, cmap='summer', levels=level)  # can modify here
     plt.xlim(min(x), max(x))
     plt.ylim(min(y), max(y))
@@ -124,11 +132,11 @@ if __name__=="__main__":
     # fix seeds
 
     # env.seed(1)  # not needed here, since we are choosing average over different init state
-    torch.manual_seed(123)
-    np.random.seed(1)
+    # torch.manual_seed(123)
+    # np.random.seed(1)
 
 
-    model_name="Cartpole_dqn_origin_1000ep_2hiddenlayer_20neu"   # can modify here
+    model_name="Cartpole_dqn_origin_1000ep_3layer_res"   # can modify here
     model = Net()
     model = torch.load(model_name)
     weights = get_weights(model)
@@ -157,7 +165,7 @@ if __name__=="__main__":
 
 
     if num_of_dir ==1:
-        x = list(np.linspace(-0.1,0.1,401))        # can modify here
+        x = list(np.linspace(-0.01,0.01,401))        # can modify here
         print(x)
         value = []
 
@@ -176,8 +184,8 @@ if __name__=="__main__":
         print(value)
 
     else:
-        x = list(np.linspace(-0.2,0.2,51))  # can modify here
-        y = list(np.linspace(-0.2,0.2,51))  # can modify here
+        x = list(np.linspace(-1,1,51))  # can modify here
+        y = list(np.linspace(-1,1,51))  # can modify here
         value = np.zeros(shape=(len(x), len(y)))
         for i in range(len(x)):
             for j in range(len(y)):
@@ -187,7 +195,7 @@ if __name__=="__main__":
                     p.data = w + torch.Tensor(d).type(type(w))
 
                 t_s = time.time()
-                model_value = Cartpole_playground.playground(model, 80, True)  # can modify here
+                model_value = Cartpole_playground.playground(model, 100, True)  # can modify here
                 value[i][j]=model_value
                 print(model_value)
                 print('time: ', time.time() - t_s)
@@ -205,5 +213,6 @@ if __name__=="__main__":
     import json
 
     with open(value_output_file,'w') as fp:
-        value=value.tolist()
+        if num_of_dir ==2:
+            value=value.tolist()
         json.dump(value, fp)

@@ -20,10 +20,10 @@ def playground_choose_action(model, x):
 
 
 def playground(model, iteration, use_env_reward=True):
-    GAMMA = 0.99                                             # can modify here
+    GAMMA = 1                                             # can modify here
     torch.manual_seed(1)
     np.random.seed(1)
-    env = gym.make('CartPole-v0')
+    env = gym.make('MountainCar-v0')
     env = env.unwrapped
     dqn = model
 
@@ -33,15 +33,25 @@ def playground(model, iteration, use_env_reward=True):
     for i_episode in range(iteration):
         s = env.reset()
         episode_reward = 0
-        for i in range(5000):
+        for i in range(500):
             a = playground_choose_action(dqn, s)
 
             # take action
             s_, r, done, info = env.step(a)
+            position = s_[0]
+            if position < -0.6:
+                modified_reward = abs(position + 0.5) / 3
+            elif position > -0.4:
+                modified_reward = position + 0.5
+            else:
+                modified_reward = 0
+
             s = s_
 
             if use_env_reward:
-                episode_reward += r #* (GAMMA**i)
+                episode_reward += r* (GAMMA**i)
+            else:
+                episode_reward += modified_reward * (GAMMA ** i)
 
             if done:
                 break

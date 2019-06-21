@@ -4,17 +4,17 @@ import torch.nn.functional as F
 import numpy as np
 import gym
 
-
 # Hyper Parameters
 BATCH_SIZE = 64
-learningRate = 0.005                   # learning rate
-EPSILON = 0.0               # greedy policy
-EPSILON_THRESHOLD = 0.9
-EPSILON_INCRESMENT = 0.0001
-GAMMA = 0.9                 # reward discount
+learningRate = 0.0001                   # learning rate
+
+EPSILON = 0              # greedy policy parameters
+EPSILON_INCRESMENT = 0.01
+EPSILON_THRES = 0.99
+GAMMA = 0.99                # reward discount
 TARGET_REPLACE_ITER = 100   # target update frequency
-MEMORY_CAPACITY = 50000
-env = gym.make('MountainCar-v0')
+MEMORY_CAPACITY = 10000
+env = gym.make('CartPole-v0')
 env = env.unwrapped
 N_ACTIONS = env.action_space.n
 N_STATES = env.observation_space.shape[0]
@@ -24,24 +24,26 @@ ENV_A_SHAPE = 0 if isinstance(env.action_space.sample(), int) else env.action_sp
 class Net(nn.Module):
     def __init__(self, ):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(N_STATES, 10)  # can modify here
+        self.fc1 = nn.Linear(N_STATES, 20)
         self.fc1.weight.data.normal_(0, 0.1)   # initialization
-        # self.bn1 = nn.BatchNorm1d(num_features=50)  # bn
-        self.out = nn.Linear(10, N_ACTIONS)
+        self.fc2 = nn.Linear(20, 20)
+        self.fc2.weight.data.normal_(0, 0.1)  # initialization
+        self.fc3 = nn.Linear(20, 20)
+        self.fc3.weight.data.normal_(0, 0.1)  # initialization
+        self.out = nn.Linear(20, N_ACTIONS)
         self.out.weight.data.normal_(0, 0.1)   # initialization
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = self.bn1(x)
+        x = F.relu(x)
+        # residue = x
+        x = self.fc2(x)
+        x = F.relu(x)
+        x = self.fc3(x)
+        # x += residue
         x = F.relu(x)
         actions_value = self.out(x)
         return actions_value
-
-    # def get_value(self, x):
-    #     x = self.fc1(x)
-    #     x = F.relu(x)
-    #     actions_value = self.out(x)
-    #     return actions_value
 
 
 class DQN(object):
@@ -80,20 +82,27 @@ class DQN(object):
         self.learn_step_counter += 1
 
         # sample batch transitions
-        sample_index = np.random.choice(MEMORY_CAPACITY, BATCH_SIZE)
+        if self.memory.shape[0] == MEMORY_CAPACITY:
+            sample_index = np.random.choice(MEMORY_CAPACITY, BATCH_SIZE)
+        else:
+            sample_index = np.random.choice(self.memory.shape[0], BATCH_SIZE)
         b_memory = self.memory[sample_index, :]
         b_s = torch.FloatTensor(b_memory[:, :N_STATES])
         b_a = torch.LongTensor(b_memory[:, N_STATES:N_STATES+1].astype(int))
         b_r = torch.FloatTensor(b_memory[:, N_STATES+1:N_STATES+2])
-        b_done = torch.FloatTensor(b_memory[:, N_STATES+2:N_STATES + 3])
         b_s_ = torch.FloatTensor(b_memory[:, -N_STATES:])
+        b_done = torch.FloatTensor(b_memory[:, N_STATES+2:N_STATES+3])
 
         # q_eval w.r.t the action in experience
+
         q_eval = self.online_net(b_s).gather(1, b_a)  # shape (batch, 1)
         q_next = self.target_net(b_s_).detach()     # detach from graph, don't backpropagate
         q_target = b_r + GAMMA * (1-b_done)* q_next.max(1)[0].view(BATCH_SIZE, 1)   # shape (batch, 1)
-        loss = self.loss_func(q_eval, q_target)
 
+
+
+
+        loss = self.loss_func(q_eval, q_target)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -114,47 +123,40 @@ np.random.seed(1)
 dqn = DQN()
 
 print('\nCollecting experience...')
-for i_episode in range(4000):
-    if EPSILON<0.9 and i_episode>10:
+for i_episode in range(2000):
+    if EPSILON<EPSILON_THRES:
         EPSILON += EPSILON_INCRESMENT
     s = env.reset()
     episode_reward = 0
-    for i in range(5000):
+
+    substep = 0
+    while substep<5000:
+        substep += 1
         # env.render()
         a = dqn.choose_action(s)
 
-        if a == 1:
-            a_ = 2
-        else:
-            a_ = a
-
         # take action
-        s_, r, done, info = env.step(a_)
-        # position = s_[0]
-        # if position < -0.6:
-        #     modified_reward = abs(position + 0.5)/3
-        # elif position > -0.4:
-        #     modified_reward = position + 0.5
-        # else:
-        #     modified_reward = 0
+        s_, r, done, info = env.step(a)
+
+
         if done:
-            r = 1
+            r = -r
         dqn.store_transition(s, a, r, s_, done)
         s = s_
 
         episode_reward += r
-        if dqn.memory_counter > MEMORY_CAPACITY:
+        if dqn.memory_counter > BATCH_SIZE:
             dqn.learn()
-
 
         if done:
             break
+
     print('Episode: ', i_episode,
-              '| Episode_reward: ', episode_reward)
+                  '| Episode_reward: ', episode_reward)
 
 env.close()
 
 print([p.data for p in dqn.getOnlineNet().parameters()])
 
 
-torch.save(dqn.getOnlineNet(), 'mountainCar_dqn_mod_action')
+torch.save(dqn.getOnlineNet(), 'Cartpole_dqn_origin_1000ep_3layer_no_res_small_lr')

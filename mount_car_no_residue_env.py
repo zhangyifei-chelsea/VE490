@@ -26,13 +26,19 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(N_STATES, 10)  # can modify here
         self.fc1.weight.data.normal_(0, 0.1)   # initialization
-        # self.bn1 = nn.BatchNorm1d(num_features=50)  # bn
+        self.fc2 = nn.Linear(10, 10)  # can modify here
+        self.fc2.weight.data.normal_(0, 0.1)  # add this to have a skip connection
+        self.fc3 = nn.Linear(10, 10)  # can modify here
+        self.fc3.weight.data.normal_(0, 0.1)  # add this to have a skip connection
         self.out = nn.Linear(10, N_ACTIONS)
         self.out.weight.data.normal_(0, 0.1)   # initialization
 
     def forward(self, x):
         x = self.fc1(x)
-        # x = self.bn1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+        x = F.relu(x)
+        x = self.fc3(x)
         x = F.relu(x)
         actions_value = self.out(x)
         return actions_value
@@ -114,7 +120,7 @@ np.random.seed(1)
 dqn = DQN()
 
 print('\nCollecting experience...')
-for i_episode in range(4000):
+for i_episode in range(10000):
     if EPSILON<0.9 and i_episode>10:
         EPSILON += EPSILON_INCRESMENT
     s = env.reset()
@@ -122,14 +128,14 @@ for i_episode in range(4000):
     for i in range(5000):
         # env.render()
         a = dqn.choose_action(s)
-
-        if a == 1:
-            a_ = 2
-        else:
-            a_ = a
+        #
+        # if a == 1:
+        #     a_ = 2
+        # else:
+        #     a_ = a
 
         # take action
-        s_, r, done, info = env.step(a_)
+        s_, r, done, info = env.step(a)
         # position = s_[0]
         # if position < -0.6:
         #     modified_reward = abs(position + 0.5)/3
@@ -157,4 +163,4 @@ env.close()
 print([p.data for p in dqn.getOnlineNet().parameters()])
 
 
-torch.save(dqn.getOnlineNet(), 'mountainCar_dqn_mod_action')
+torch.save(dqn.getOnlineNet(), 'mountainCar_dqn_3layer_residue')

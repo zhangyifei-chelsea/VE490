@@ -8,7 +8,8 @@ def plot_2D_contour(x, y, value, model_name):
     print('------------------------------------------------------------------')
     fig = plt.figure()
 
-    level=np.arange(10,101,10)   # can modify here
+    level=np.arange(-500,-100,100)   # can modify here
+    level = [10,20,100, 300,500, 1000]
     CS = plt.contour(x, y, value, cmap='summer', levels=level)  # can modify here
     plt.xlim(min(x), max(x))
     plt.ylim(min(y), max(y))
@@ -18,7 +19,7 @@ def plot_2D_contour(x, y, value, model_name):
 
 
 
-filename='Cartpole_dqn_origin_1000ep_2hiddenlayer_20neu_value_withdiscount_-0.2-0.2'
+filename='compare_residue_structure/Cartpole_dqn_origin_1000ep_3layer_res_value_trial2'
 
 with open(filename,'r') as fp:
     value = json.load(fp)
