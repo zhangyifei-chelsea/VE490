@@ -1,0 +1,10 @@
+the effect of memory size on the trajectory
+
+when batch size is small the trajectory is not orthogonal to the contour lines
+
+reason 1:
+since we use PCA, it just copress everything into a 2D plane, the actual position of a point is different from the value shown on the 2D contour -> less likely since the trajectory is in low dimension and the explained variance ratio is high like [0.6-0.75, 0.1-0.2]
+
+reason 2:
+the destribution of samples is not uniform when the memory is not large enough.
+so the batch sampled from the memory can be biased, preventing the trajectory going in the optimal direction

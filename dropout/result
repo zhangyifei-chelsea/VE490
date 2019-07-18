@@ -1,0 +1,15 @@
+network architecture:
+5 hidden layer, each wih 128 neurons
+
+dropout rate 0.5 for all hidden layers
+
+hyper-parameters are all the same
+
+environment: using original cart pole (do not modify the total tick, so each episode will end at 200 ticks)
+
+result:
+dropout version has smoother contour
+
+problem:
+dropout is strange, when I remove dropout and divide the weight by 2, it will produce strange contour,
+in evaluation I still need to keep the dropout to obtain seemingly normal plots
