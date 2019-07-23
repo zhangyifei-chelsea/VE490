@@ -53,6 +53,16 @@ class Net(nn.Module):
         # actions_value = self.out(x)
         return actions_value
 
+    # def agent_forward(self,x):
+    #     x = F.relu(self.fc1(x))
+    #     x = F.relu(self.fc2(x))
+    #     x = F.relu(self.fc3(x))
+    #     x = F.relu(self.fc4(x))
+    #     x = F.relu(self.fc5(x))
+    #     actions_value = self.out(x)
+    #     # print(self.parameters())
+    #     return actions_value
+
 
 
 
@@ -66,17 +76,23 @@ class DQN(object):
         self.optimizer = torch.optim.Adam(self.online_net.parameters(), lr=learningRate)
         self.loss_func = nn.MSELoss()
 
-    def choose_action(self, x):
+    def choose_action(self, x, eval=False):
         x = torch.unsqueeze(torch.FloatTensor(x), 0)
         # input only one sample
-        if np.random.uniform() < EPSILON:   # greedy
+        if np.random.uniform() < EPSILON or eval:   # greedy
+            # try to use evaluate
+            self.online_net.eval()
             actions_value = self.online_net.forward(x)
+            # self.online_net.train()
+            # actions_value = self.online_net.agent_forward(x)
             action = torch.max(actions_value, 1)[1].data.numpy()
             action = action[0] if ENV_A_SHAPE == 0 else action.reshape(ENV_A_SHAPE)  # return the argmax index
         else:   # random
             action = np.random.randint(0, N_ACTIONS)
             action = action if ENV_A_SHAPE == 0 else action.reshape(ENV_A_SHAPE)
         return action
+
+
 
     def store_transition(self, s, a, r, s_, done):
         transition = np.hstack((s, [a, r, done], s_))
@@ -87,6 +103,7 @@ class DQN(object):
 
     def learn(self):
         # target parameter update
+        self.online_net.train()
         if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
             self.target_net.load_state_dict(self.online_net.state_dict())
         self.learn_step_counter += 1
@@ -125,16 +142,19 @@ class DQN(object):
     def getOnlineNet(self):
         return self.online_net
 
-#
-env.seed(11)
-torch.manual_seed(34513)
-np.random.seed(251)
+
+# env.seed(1111)
+# torch.manual_seed(1345413)
+# np.random.seed(2151)
 
 dqn = DQN()
 
 print('\nCollecting experience...')
 
-num_episode=630
+num_episode = 2000
+
+best_in_eval=dqn.getOnlineNet()
+best_avg_reward=0
 
 for i_episode in range(num_episode):
     # if i_episode%5==0:
@@ -145,15 +165,11 @@ for i_episode in range(num_episode):
     episode_reward = 0
 
     substep = 0
-    while substep<5000:
-        substep += 1
-        # env.render()
-        a = dqn.choose_action(s)
+    while True:
 
+        a = dqn.choose_action(s)
         # take action
         s_, r, done, info = env.step(a)
-
-
         if done:
             r = -r
         dqn.store_transition(s, a, r, s_, done)
@@ -169,9 +185,35 @@ for i_episode in range(num_episode):
     print('Episode: ', i_episode,
                   '| Episode_reward: ', episode_reward)
 
+    eval_num=70
+    if i_episode % 5 == 0 and i_episode>400:
+        # start evaluation
+        sum_of_performance=0
+        for i in range(eval_num):
+            s = env.reset()
+            reward=0
+            while True:
+                a = dqn.choose_action(s,True)
+                s_, r, done, info = env.step(a)
+                s=s_
+                reward += r
+                if done:
+                    break
+
+            sum_of_performance+=reward
+        print("current performance: ", sum_of_performance/eval_num)
+        if sum_of_performance/eval_num>=best_avg_reward:
+            best_avg_reward=sum_of_performance/eval_num
+            print("best performance:", sum_of_performance/eval_num)
+            best_in_eval=dqn.getOnlineNet()
+            if best_avg_reward<200:
+                torch.save(best_in_eval, 'Cartpole_dqn_with_dropout_new_trial')
+            else:
+                torch.save(best_in_eval, 'Cartpole_dqn_with_dropout_new_v3_episode'+str(i_episode))
+
 env.close()
 
 print([p.data for p in dqn.getOnlineNet().parameters()])
 
 
-torch.save(dqn.getOnlineNet(), 'Cartpole_dqn_with_dropout_600ep_5layer_128neu_0.001lr')
+# torch.save(best_in_eval, 'Cartpole_dqn_with_dropout_new_trial1')
